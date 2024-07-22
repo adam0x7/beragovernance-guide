@@ -7,23 +7,29 @@ import BlockRewardControllerABI from '../abi/BlockRewardController.json' assert 
 
 dotenv.config();
 
-const provider = new ethers.JsonRpcProvider(process.env.BERA_RPC);
-const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+const provider = new ethers.JsonRpcProvider(`insert rpc from env file`);
+const wallet = new ethers.Wallet('insert private key from env file', provider);
 
-const governance = new ethers.Contract(process.env.GOVERNANCE_ADDRESS, BerachainGovernanceABI, wallet);
-const bgt = new ethers.Contract(process.env.BGT_ADDRESS, BGTABI, wallet);
-const blockRewardController = new ethers.Contract(process.env.BLOCK_REWARD_CONTROLLER_ADDRESS, BlockRewardControllerABI, wallet);
+const governance = new ethers.Contract('0xE3EDa03401Cf32010a9A9967DaBAEe47ed0E1a0b', BerachainGovernanceABI, wallet);
+
+const beraChef = new ethers.Contract('0xfb81E39E3970076ab2693fA5C45A07Cc724C93c2', BeraChefABI, wallet);
+const rewardsVault = new ethers.Contract('0x94Ed9Bb29cad9ed0babbE9b1fEc09F8F66761E5b', BerachainRewardsVaultABI, wallet);
+const isFriend = true;
 
 async function main() {
-  const targets = [bgt.address, blockRewardController.address];
-  const values = [0, 0];
+  const beraChefAddress = beraChef.getAddress(); 
+  const friendAddress = rewardsVault.getAddress();
+  const isFriend = true;
+
+  const targets = [beraChefAddress];
+  const values = [0];
   const calldatas = [
-    bgt.interface.encodeFunctionData('whitelistSender', [wallet.address, true]),
-    blockRewardController.interface.encodeFunctionData('setRewardRate', [1000])
+    BeraChefABI.encodeFunctionData('updateFriendsOfTheChef', [friendAddress, isFriend])
   ];
-  const description = "Test Proposal";
+  const description = "Update friends of the chef";
 
   console.log('Creating proposal...');
+  console.log('Targets:', targets);
   const tx = await governance.propose(targets, values, calldatas, description);
   const receipt = await tx.wait();
   const proposalId = receipt.events[0].args.proposalId;
@@ -58,10 +64,8 @@ async function main() {
   await executeTx.wait();
   console.log('Proposal executed successfully');
 
-  const isWhitelisted = await bgt.isWhitelistedSender(wallet.address);
-  const rewardRate = await blockRewardController.rewardRate();
-  console.log('Is wallet whitelisted:', isWhitelisted);
-  console.log('New reward rate:', rewardRate.toString());
+  const isFriendnOW = await BeraChefABI.isFriendOfTheChef(friendAddress);
+  console.log('Is address friend of the chef:', isFriendNow);
 }
 
 main().catch((error) => {
