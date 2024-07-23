@@ -24,33 +24,42 @@ async function main() {
   const targets = [beraChefAddress];
   const values = [0];
 
-   // Check BGT balance
-   const balance = await bgt.balanceOf(wallet.address);
-   console.log('BGT balance:', balance.toString());
+  // Check BGT balance
+  const balance = await bgt.balanceOf(wallet.address);
+  console.log('BGT balance:', balance.toString());
 
-   // Check current delegation
-   const currentDelegatee = await bgt.delegates(wallet.address);
-   console.log('Current delegatee:', currentDelegatee);
+  // Check current delegation and voting power
+  const currentDelegatee = await bgt.delegates(wallet.address);
+  console.log('Current delegatee:', currentDelegatee);
 
-   // If not delegated to self, delegate
-   if (currentDelegatee !== wallet.address) {
-     console.log('Delegating BGT to self...');
-     const delegateTx = await bgt.delegate(wallet.address);
-     await delegateTx.wait();
-     console.log('Delegation complete');
-   } else {
-     console.log('BGT already delegated to self');
-   }
-
-
-  const proposalThreshold = await governance.proposalThreshold();
-  console.log('Proposal threshold:', proposalThreshold.toString());
-  
   const votingPower = await governance.getVotes(wallet.address, await provider.getBlockNumber() - 1);
   console.log('Your voting power:', votingPower.toString());
 
+  const proposalThreshold = await governance.proposalThreshold();
+  console.log('Proposal threshold:', proposalThreshold.toString());
+
   if (votingPower < proposalThreshold) {
-    console.log('Voting power is less than proposal threshold, cannot create proposal');
+    console.log('Voting power is less than proposal threshold');
+    if (currentDelegatee !== wallet.address) {
+      console.log('Delegating all BGT to self...');
+      const delegateTx = await bgt.delegate(wallet.address);
+      await delegateTx.wait();
+      console.log('Delegation complete');
+    } else {
+      console.log('Already delegated to self, but still not enough voting power');
+      console.log('Please acquire more BGT tokens to meet the proposal threshold');
+      return;
+    }
+  } else {
+    console.log('Voting power is sufficient to create a proposal');
+  }
+
+  // Check voting power again after potential delegation
+  const updatedVotingPower = await governance.getVotes(wallet.address, await provider.getBlockNumber() - 1);
+  console.log('Updated voting power:', updatedVotingPower.toString());
+
+  if (updatedVotingPower < proposalThreshold) {
+    console.log('Voting power is still less than proposal threshold, cannot create proposal');
     return;
   }
 
@@ -63,10 +72,23 @@ async function main() {
 
   console.log('Creating proposal...');
   console.log('Targets:', targets);
-  const tx = await governance.propose(targets, values, calldatas, description);
-  const receipt = await tx.wait();
-  const proposalId = receipt.events[0].args.proposalId;
-  console.log('Proposal created with ID:', proposalId);
+  try {
+    const tx = await governance.propose(targets, values, calldatas, description);
+    const receipt = await tx.wait();
+    const proposalId = await governance.hashProposal(targets, values, calldatas, ethers.id(description));
+    console.log('Proposal created with ID:', proposalId);
+  } catch (error) {
+    console.error('Error creating proposal:', error.message);
+    if (error.error && error.error.data) {
+      console.error('Error data:', error.error.data);
+    }
+    console.log('Proposal details:');
+    console.log('Targets:', targets);
+    console.log('Values:', values);
+    console.log('Calldatas:', calldatas);
+    console.log('Description:', description);
+    return;
+  }
 
   const votingDelay = await governance.votingDelay();
   console.log(`Waiting for voting delay: ${votingDelay} blocks`);
