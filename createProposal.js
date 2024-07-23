@@ -1,30 +1,63 @@
-import { ethers } from 'ethers';
-import dotenv from 'dotenv';
-import BeraChefABI from '../abi/BeraChef.json' assert {type: 'json'};
-import BerachainGovernanceABI from '../abi/BerachainGovernance.json' assert {type: 'json'};
-import BGTABI from '../abi/BGT.json' assert {type: 'json'};
-import BlockRewardControllerABI from '../abi/BlockRewardController.json' assert {type: 'json'};
+const ethers = require('ethers');
+require('dotenv').config();
+const BeraChefABI = require('./abi/BeraChef.json');
+const BerachainGovernanceABI = require('./abi/BerachainGovernance.json');
+const BGTABI = require('./abi/BGT.json');
+const BlockRewardControllerABI = require('./abi/BlockRewardController.json');
+const BerachainRewardsVaultABI = require('./abi/BerachainRewardsVault.json');
 
-dotenv.config();
-
-const provider = new ethers.JsonRpcProvider(`insert rpc from env file`);
-const wallet = new ethers.Wallet('insert private key from env file', provider);
+const provider = new ethers.JsonRpcProvider(`${process.env.RPC}`);
+const wallet = new ethers.Wallet(`${process.env.PRIVATE_KEY}`, provider);
 
 const governance = new ethers.Contract('0xE3EDa03401Cf32010a9A9967DaBAEe47ed0E1a0b', BerachainGovernanceABI, wallet);
 
 const beraChef = new ethers.Contract('0xfb81E39E3970076ab2693fA5C45A07Cc724C93c2', BeraChefABI, wallet);
+const beraChefInterface = new ethers.Interface(BeraChefABI);
 const rewardsVault = new ethers.Contract('0x94Ed9Bb29cad9ed0babbE9b1fEc09F8F66761E5b', BerachainRewardsVaultABI, wallet);
 const isFriend = true;
+const bgt = new ethers.Contract('0xbDa130737BDd9618301681329bF2e46A016ff9Ad', BGTABI, wallet);
 
 async function main() {
-  const beraChefAddress = beraChef.getAddress(); 
-  const friendAddress = rewardsVault.getAddress();
+  const beraChefAddress = await beraChef.getAddress();
+  const friendAddress = await rewardsVault.getAddress();
   const isFriend = true;
-
   const targets = [beraChefAddress];
   const values = [0];
+
+   // Check BGT balance
+   const balance = await bgt.balanceOf(wallet.address);
+   console.log('BGT balance:', balance.toString());
+
+   // Check current delegation
+   const currentDelegatee = await bgt.delegates(wallet.address);
+   console.log('Current delegatee:', currentDelegatee);
+
+   // If not delegated to self, delegate
+   if (currentDelegatee !== wallet.address) {
+     console.log('Delegating BGT to self...');
+     const delegateTx = await bgt.delegate(wallet.address);
+     await delegateTx.wait();
+     console.log('Delegation complete');
+   } else {
+     console.log('BGT already delegated to self');
+   }
+
+
+  const proposalThreshold = await governance.proposalThreshold();
+  console.log('Proposal threshold:', proposalThreshold.toString());
+  
+  const votingPower = await governance.getVotes(wallet.address, await provider.getBlockNumber() - 1);
+  console.log('Your voting power:', votingPower.toString());
+
+  if (votingPower < proposalThreshold) {
+    console.log('Voting power is less than proposal threshold, cannot create proposal');
+    return;
+  }
+
+  console.log('Friend', friendAddress);
+  console.log('targets', isFriend);
   const calldatas = [
-    BeraChefABI.encodeFunctionData('updateFriendsOfTheChef', [friendAddress, isFriend])
+    beraChefInterface.encodeFunctionData('updateFriendsOfTheChef', [friendAddress, isFriend])
   ];
   const description = "Update friends of the chef";
 
