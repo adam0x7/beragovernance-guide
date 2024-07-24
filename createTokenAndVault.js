@@ -17,7 +17,6 @@ async function main() {
   const createVaultTx = await factory.createRewardsVault(tokenAddress);
   await createVaultTx.wait();
 
-  // Predict the vault address
   const vaultAddress = await factory.predictRewardsVaultAddress(tokenAddress);
   console.log('Rewards vault created at:', vaultAddress);
 }

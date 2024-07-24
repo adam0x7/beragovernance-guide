@@ -21,25 +21,30 @@ async function checkExistingProposal(targets, values, calldatas, descriptionHash
   const proposalId = await governance.hashProposal(targets, values, calldatas, descriptionHash);
   try {
     const state = await governance.state(proposalId);
-    return state !== 3; // 3 is typically the state for non-existent proposals
+    return state !== 3; 
   } catch (error) {
     if (error.reason === "GovernorNonexistentProposal(uint256)") {
-      return false; // Proposal doesn't exist
+      return false; 
     }
-    throw error; // Re-throw if it's a different error
+    throw error;
   }
 }
 
-async function waitForProposalState(proposalId, targetState) {
+async function waitForProposalState(proposalId, targetState, timeout = 3600000) {
   const stateNames = ['Pending', 'Active', 'Canceled', 'Defeated', 'Succeeded', 'Queued', 'Expired', 'Executed'];
+  const startTime = Date.now();
   while (true) {
     const currentState = await governance.state(proposalId);
     console.log(`Current proposal state: ${currentState} (${stateNames[currentState]})`);
     if (currentState === targetState) {
       break;
     }
+    if (Date.now() - startTime > timeout) {
+      console.log("Waiting on voting period to start. Please try again in a few hours.");
+      process.exit(0);
+    }
     console.log('Waiting 60 seconds before checking again...');
-    await new Promise(resolve => setTimeout(resolve, 60000)); // Wait 60 seconds before checking again
+    await new Promise(resolve => setTimeout(resolve, 60000)); 
   }
 }
 
@@ -50,11 +55,11 @@ async function main() {
   const targets = [beraChefAddress];
   const values = [0];
 
-  // Check BGT balance
+  
   const balance = await bgt.balanceOf(wallet.address);
   console.log('BGT balance:', balance.toString());
 
-  // Check current delegation and voting power
+
   const currentDelegatee = await bgt.delegates(wallet.address);
   console.log('Current delegatee:', currentDelegatee);
 
@@ -80,7 +85,7 @@ async function main() {
     console.log('Voting power is sufficient to create a proposal');
   }
 
-  // Check voting power again after potential delegation
+  
   const updatedVotingPower = await governance.getVotes(wallet.address, await provider.getBlockNumber() - 1);
   console.log('Updated voting power:', updatedVotingPower.toString());
 
@@ -136,13 +141,13 @@ async function main() {
     }
   }
 
-  // Check the current state of the proposal
+
   const proposalState = await governance.state(proposalId);
   console.log('Current proposal state:', proposalState);
 
-  // Wait for the proposal to enter the active state
+  
   console.log('Waiting for proposal to become active...');
-  await waitForProposalState(proposalId, 1); // 1 is typically the state for Active proposals
+  await waitForProposalState(proposalId, 1, 3600000); // 1 hour timeout
   console.log('Proposal is now active and ready for voting');
 
   console.log('Checking if vote has already been cast...');
@@ -192,7 +197,7 @@ async function main() {
   }
 
   console.log('Waiting for voting period to end...');
-  await waitForProposalState(proposalId, 4); // 4 is typically the state for Succeeded proposals
+  await waitForProposalState(proposalId, 4); 
   console.log('Voting period has ended.');
 
   console.log('Queueing proposal...');
