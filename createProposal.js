@@ -17,6 +17,23 @@ const rewardsVault = new ethers.Contract('0x94Ed9Bb29cad9ed0babbE9b1fEc09F8F6676
 const isFriend = true;
 const bgt = new ethers.Contract('0xbDa130737BDd9618301681329bF2e46A016ff9Ad', BGTABI, wallet);
 
+async function checkExistingProposal(targets, values, calldatas, descriptionHash) {
+  const proposalId = await governance.hashProposal(targets, values, calldatas, descriptionHash);
+  const state = await governance.state(proposalId);
+  return state !== 3; // 3 is typically the state for non-existent proposals
+}
+
+async function waitForProposalState(proposalId, targetState) {
+  while (true) {
+    const currentState = await governance.state(proposalId);
+    console.log('Current proposal state:', currentState);
+    if (currentState === targetState) {
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds before checking again
+  }
+}
+
 async function main() {
   const beraChefAddress = await beraChef.getAddress();
   const friendAddress = await rewardsVault.getAddress();
@@ -72,36 +89,73 @@ async function main() {
 
   console.log('Creating proposal...');
   console.log('Targets:', targets);
-  try {
-    const tx = await governance.propose(targets, values, calldatas, description);
-    const receipt = await tx.wait();
-    const proposalId = await governance.hashProposal(targets, values, calldatas, ethers.id(description));
-    console.log('Proposal created with ID:', proposalId);
-  } catch (error) {
-    console.error('Error creating proposal:', error.message);
-    if (error.error && error.error.data) {
-      console.error('Error data:', error.error.data);
+  const hash = ethers.id(description);
+
+  const proposalExists = await checkExistingProposal(targets, values, calldatas, hash);
+  let proposalId;
+
+  if (proposalExists) {
+    console.log('A proposal with these parameters already exists. Continuing with the existing proposal.');
+    proposalId = await governance.hashProposal(targets, values, calldatas, hash);
+  } else {
+    try {
+      console.log('Proposing with:', { targets, values, calldatas, description });
+      const tx = await governance.propose(targets, values, calldatas, description);
+      const receipt = await tx.wait();
+      proposalId = await governance.hashProposal(targets, values, calldatas, hash);
+      console.log('Proposal created with ID:', proposalId);
+    } catch (error) {
+      console.error('Error creating proposal:', error);
+      if (error.error && error.error.data) {
+        try {
+          const decodedError = governance.interface.parseError(error.error.data);
+          console.error('Decoded error:', decodedError);
+        } catch (parseError) {
+          console.error('Could not parse error:', error.error.data);
+        }
+      }
+      console.log('Proposal details:');
+      console.log('Targets:', targets);
+      console.log('Values:', values);
+      console.log('Calldatas:', calldatas);
+      console.log('Description:', description);
+      return;
     }
-    console.log('Proposal details:');
-    console.log('Targets:', targets);
-    console.log('Values:', values);
-    console.log('Calldatas:', calldatas);
-    console.log('Description:', description);
-    return;
   }
 
-  const votingDelay = await governance.votingDelay();
-  console.log(`Waiting for voting delay: ${votingDelay} blocks`);
-  await provider.waitForTransaction(receipt.transactionHash, votingDelay.toNumber());
+  // Check the current state of the proposal
+  const proposalState = await governance.state(proposalId);
+  console.log('Current proposal state:', proposalState);
 
-  console.log('Casting vote...');
-  const voteTx = await governance.castVote(proposalId, 1);
-  await voteTx.wait();
-  console.log('Vote cast successfully');
+  // Continue with the rest of the process based on the proposal state
+  if (proposalState === 0) { // Pending state
+    const votingDelay = await governance.votingDelay();
+    console.log(`Waiting for voting delay: ${votingDelay} blocks`);
+    await provider.waitForBlock(await provider.getBlockNumber() + votingDelay.toNumber());
+  } else {
+    console.log('Proposal is past the voting delay period');
+  }
 
-  const votingPeriod = await governance.votingPeriod();
-  console.log(`Waiting for voting period: ${votingPeriod} blocks`);
-  await new Promise(resolve => setTimeout(resolve, votingPeriod.toNumber() * 4000));
+  console.log('Checking if vote has already been cast...');
+  const hasVoted = await governance.hasVoted(proposalId, wallet.address);
+
+  if (hasVoted) {
+    console.log('Vote already cast for this proposal. Proceeding to next step.');
+  } else {
+    console.log('Casting vote...');
+    try {
+      const voteTx = await governance.castVote(proposalId, 1);
+      await voteTx.wait();
+      console.log('Vote cast successfully');
+    } catch (error) {
+      console.error('Error casting vote:', error);
+      return;
+    }
+  }
+
+  console.log('Waiting for voting period to end...');
+  await waitForProposalState(proposalId, 4); // 4 is typically the state for Succeeded proposals
+  console.log('Voting period has ended.');
 
   console.log('Queueing proposal...');
   const descriptionHash = ethers.id(description);
@@ -119,7 +173,7 @@ async function main() {
   await executeTx.wait();
   console.log('Proposal executed successfully');
 
-  const isFriendnOW = await BeraChefABI.isFriendOfTheChef(friendAddress);
+  const isFriendNow = await BeraChefABI.isFriendOfTheChef(friendAddress);
   console.log('Is address friend of the chef:', isFriendNow);
 }
 
