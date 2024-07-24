@@ -6,9 +6,9 @@ const BerachainRewardsVaultFactoryABI = require('./abi/BerachainRewardsVaultFact
 const provider = new ethers.JsonRpcProvider(`${process.env.RPC}`);
 const wallet = new ethers.Wallet(`${process.env.MY_PRIVATE_KEY}`, provider);
 
-const factoryAddress = '0x2B6e40f65D82A0cB98795bC7587a71bfa49fBB2B';
+const factoryAddress = process.env.FACTORY_ADDRESS;
 const factory = new ethers.Contract(factoryAddress, BerachainRewardsVaultFactoryABI, wallet);
-const token = new ethers.Contract('0xe1B93386237F8fE86B8022ef225fA9b2cd6Bee4b', ERC20ABI, wallet);
+const token = new ethers.Contract(process.env.YOUR_TOKEN_ADDRESS, ERC20ABI, wallet);
 
 async function main() {
   const tokenAddress = await token.getAddress();
