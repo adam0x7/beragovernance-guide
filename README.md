@@ -63,10 +63,8 @@ Follow these steps to submit your proposal using our provided script:
      const votingPower = await governance.getVotes(wallet.address, await provider.getBlockNumber() - 1);
      const proposalThreshold = await governance.proposalThreshold();
      if (votingPower < proposalThreshold) {
-       // Delegate to self if needed
        await bgt.delegate(wallet.address);
      }
-     // ... (check again and return true/false)
    }
    ```
 
