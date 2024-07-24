@@ -5,14 +5,14 @@ const BerachainGovernanceABI = require('./abi/BerachainGovernance.json');
 const BGTABI = require('./abi/BGT.json');
 const BerachainRewardsVaultABI = require('./abi/BerachainRewardsVault.json');
 
-const provider = new ethers.JsonRpcProvider(process.env.RPC);
+const provider = new ethers.JsonRpcProvider(`${process.env.RPC}`);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
-const governance = new ethers.Contract('0xE3EDa03401Cf32010a9A9967DaBAEe47ed0E1a0b', BerachainGovernanceABI, wallet);
-const beraChef = new ethers.Contract('0xfb81E39E3970076ab2693fA5C45A07Cc724C93c2', BeraChefABI, wallet);
+const governance = new ethers.Contract(process.env.GOVERNANCE_ADDRESS, BerachainGovernanceABI, wallet);
+const beraChef = new ethers.Contract(process.env.BERACHEF_ADDRESS, BeraChefABI, wallet);
 const beraChefInterface = new ethers.Interface(BeraChefABI);
-const rewardsVault = new ethers.Contract('0xeaAcEcB1655bB32909D90B1AbDBe088e9837F261', BerachainRewardsVaultABI, wallet);
-const bgt = new ethers.Contract('0xbDa130737BDd9618301681329bF2e46A016ff9Ad', BGTABI, wallet);
+const rewardsVault = new ethers.Contract(process.env.REWARDS_VAULT_ADDRESS, BerachainRewardsVaultABI, wallet);
+const bgt = new ethers.Contract(process.env.BGT_ADDRESS, BGTABI, wallet);
 
 async function checkExistingProposal(targets, values, calldatas, descriptionHash) {
   const proposalId = await governance.hashProposal(targets, values, calldatas, descriptionHash);
