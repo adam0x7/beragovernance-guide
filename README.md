@@ -4,15 +4,15 @@
 
 One of the biggest perks of Proof of Liquidity is the ability for protocols to bootstrap their liquidity by getting BGT emissions. This is done through "RewardsVaults". 
 
-**RewardsVaults** are smart contracts that validators send their BGT to in exchange for incentive tokens. They are created by the RewardsVault Factory, by simply calling the function `createRewardsVault(stakingToken)`.
+**RewardsVaults** are smart contracts that validators send their BGT to in exchange for incentive tokens. They are created by the [RewardsVault Factory](https://bartio.beratrail.io/address/0x2B6e40f65D82A0cB98795bC7587a71bfa49fBB2B), by simply calling the function `createRewardsVault(stakingToken)`.
 
-While it's permissionless to create your own RewardsVault, for validators to emit their BGT to you, you must submit a governance proposal to have your RewardsVault added to BGT station to participate in PoL. This is done by making your RewardsVault a "friend of the chef" (BeraChef), which handles all validator preferences.
+While it's permissionless to create your own RewardsVault, for validators to emit their BGT to you, you must submit a governance proposal to have your RewardsVault added to BGT station to participate in PoL. This is done by making your RewardsVault a "friend of the chef", which is a collection of the approved RewardsVaults for guages to emit their BGT to. 
 
 This tutorial will show you how to submit your own governance proposal programmatically.
 
 ## Understanding The Berachain Governance Process
 
-The Berachain governance process begins with either acquiring or being delegated **1000 BGT** (Berachain Governance Token) by community members. This is the threshold to create a proposal.
+The Berachain governance contracts inherit from the [Open Zeppelin governance modules](https://docs.openzeppelin.com/contracts/4.x/api/governance). The process begins with either acquiring or being delegated **1000 BGT** (Bera Governance Token) by community members. This is the threshold to create a proposal.
 
 ### Proposal Inputs
 
@@ -90,7 +90,7 @@ Follow these steps to submit your proposal using our provided script:
    }
    ```
 
-8. Wait until more than 2B BGT has been voted in favor of your proposal. Share your proposal on Twitter and in the Bera buildoors group chat.
+8. Wait until more than 2B BGT has been voted in favor of your proposal. Share your proposal on Twitter and in the Bera buildoors group chat for people to vote!
 
 9. Once quorum is reached and enough "yes" votes are in your favor, the proposal gets "time locked" for 2 days for final security checks.
 
