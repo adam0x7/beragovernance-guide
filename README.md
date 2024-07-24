@@ -24,7 +24,6 @@ When a proposal is made to the governance contract, there are 4 inputs:
 4. **Description**: The explanation of the proposal's purpose.
 
 ### Proposal Lifecycle
-
 1. **Creation**: The proposal is created with the above inputs.
 2. **Waiting Period**: 3 hours before becoming active for voting.
 3. **Active Voting**: 3 hours for token holders to cast votes (For, Against, or Abstain).
@@ -37,9 +36,10 @@ When a proposal is made to the governance contract, there are 4 inputs:
 
 Follow these steps to submit your proposal using our provided script:
 
-1. Deploy your Incentive Token if you haven't already (standard ERC20 token).
-
-2. Update the `.env` file with the address of your token and other necessary variables:
+1. Git clone this repository 
+2. Copy and paste the .env.example file into your own .env file 
+3. Deploy your Incentive Token if you haven't already (standard ERC20 token).
+4. Update the `.env` file with the address of your token and other necessary variables:
 
    ```
    RPC=<Your RPC URL>
@@ -50,11 +50,11 @@ Follow these steps to submit your proposal using our provided script:
    BGT_ADDRESS=<BGT Token Address>
    ```
 
-3. Run `node createVault` to call the RewardsVault factory and create a vault.
+5. Run `node createVault` to call the RewardsVault factory and create a vault.
 
-4. Copy the logged RewardsVault address and paste it into your `.env` file for the `REWARDS_VAULT_ADDRESS` variable.
+6. Copy the logged RewardsVault address and paste it into your `.env` file for the `REWARDS_VAULT_ADDRESS` variable.
 
-5. Run `node createProposal` to create the proposal for your RewardsVault on-chain. This script will:
+7. Run `node createProposal` to create the proposal for your RewardsVault on-chain. This script will:
 
    a. Check if you have sufficient voting power:
 
@@ -92,11 +92,11 @@ Follow these steps to submit your proposal using our provided script:
    }
    ```
 
-6. Wait until more than 2B BGT has been voted in favor of your proposal. Share your proposal on Twitter and in the Bera buildoors group chat.
+8. Wait until more than 2B BGT has been voted in favor of your proposal. Share your proposal on Twitter and in the Bera buildoors group chat.
 
-7. Once quorum is reached and enough "yes" votes are in your favor, the proposal gets "time locked" for 2 days for final security checks.
+9. Once quorum is reached and enough "yes" votes are in your favor, the proposal gets "time locked" for 2 days for final security checks.
 
-8. After the timelock period, the script will automatically queue and execute the proposal:
+10. After the timelock period, the script will automatically queue and execute the proposal:
 
    ```javascript
    console.log('Queueing proposal...');
