@@ -14,6 +14,7 @@ const beraChefInterface = new ethers.Interface(BeraChefABI);
 const rewardsVault = new ethers.Contract(process.env.REWARDS_VAULT_ADDRESS, BerachainRewardsVaultABI, wallet);
 const bgt = new ethers.Contract(process.env.BGT_ADDRESS, BGTABI, wallet);
 
+// Function to check if a proposal with the same parameters already exists
 async function checkExistingProposal(targets, values, calldatas, descriptionHash) {
   const proposalId = await governance.hashProposal(targets, values, calldatas, descriptionHash);
   try {
@@ -24,6 +25,7 @@ async function checkExistingProposal(targets, values, calldatas, descriptionHash
   }
 }
 
+// Function to wait for a proposal to reach a specific state
 async function waitForProposalState(proposalId, targetState, timeout = 3600000) {
   const stateNames = ['Pending', 'Active', 'Canceled', 'Defeated', 'Succeeded', 'Queued', 'Expired', 'Executed'];
   const startTime = Date.now();
@@ -39,6 +41,7 @@ async function waitForProposalState(proposalId, targetState, timeout = 3600000) 
   }
 }
 
+// Function to ensure the wallet has sufficient voting power to create a proposal
 async function ensureSufficientVotingPower() {
   const balance = await bgt.balanceOf(wallet.address);
   console.log('BGT balance:', balance.toString());
@@ -75,6 +78,7 @@ async function ensureSufficientVotingPower() {
   return true;
 }
 
+// Function to create a new governance proposal
 async function createProposal(targets, values, calldatas, description) {
   const hash = ethers.id(description);
   const proposalExists = await checkExistingProposal(targets, values, calldatas, hash);
@@ -105,6 +109,7 @@ async function createProposal(targets, values, calldatas, description) {
   }
 }
 
+// Function to cast a vote on a proposal
 async function castVote(proposalId) {
   const hasVoted = await governance.hasVoted(proposalId, wallet.address);
   if (hasVoted) {
@@ -130,7 +135,9 @@ async function castVote(proposalId) {
   }
 }
 
+// Main function that orchestrates the entire proposal creation and execution process
 async function main() {
+  // Set up the proposal parameters
   const beraChefAddress = await beraChef.getAddress();
   const friendAddress = await rewardsVault.getAddress();
   const targets = [beraChefAddress];
@@ -138,38 +145,48 @@ async function main() {
   const calldatas = [beraChefInterface.encodeFunctionData('updateFriendsOfTheChef', [friendAddress, true])];
   const description = "Update friends of the chef";
 
+  // Ensure the wallet has enough voting power
   if (!(await ensureSufficientVotingPower())) return;
 
+  // Create the proposal
   const proposalId = await createProposal(targets, values, calldatas, description);
 
+  // Wait for the proposal to become active
   console.log('Waiting for proposal to become active...');
   await waitForProposalState(proposalId, 1, 3600000); // 1 hour timeout
   console.log('Proposal is now active and ready for voting');
 
+  // Cast a vote on the proposal
   await castVote(proposalId);
 
+  // Wait for the voting period to end
   console.log('Waiting for voting period to end...');
   await waitForProposalState(proposalId, 4);
   console.log('Voting period has ended.');
 
+  // Queue the proposal for execution
   console.log('Queueing proposal...');
   const descriptionHash = ethers.id(description);
   await (await governance.queue(targets, values, calldatas, descriptionHash)).wait();
   console.log('Proposal queued');
 
+  // Wait for the timelock delay
   const timelock = await governance.timelock();
   const delay = await timelock.getMinDelay();
   console.log(`Waiting for timelock delay: ${delay} seconds`);
   await new Promise(resolve => setTimeout(resolve, delay.toNumber() * 1000));
 
+  // Execute the proposal
   console.log('Executing proposal...');
   await (await governance.execute(targets, values, calldatas, descriptionHash)).wait();
   console.log('Proposal executed successfully');
 
+  // Verify the result
   const isFriendNow = await beraChef.isFriendOfTheChef(friendAddress);
   console.log('Is address friend of the chef:', isFriendNow);
 }
 
+// Run the main function
 main().catch((error) => {
   console.error(error);
   process.exit(1);
